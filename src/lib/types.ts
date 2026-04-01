@@ -32,6 +32,7 @@ export type Bom = {
   parentId: string | null;
   isLocked: boolean;
   isDraft: boolean;
+  comment: string | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;

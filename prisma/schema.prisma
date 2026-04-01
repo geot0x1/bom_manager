@@ -47,6 +47,7 @@ model Bom {
   children  Bom[]      @relation("BomFork")
   isLocked  Boolean    @default(false)
   isDraft   Boolean    @default(false)
+  comment   String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   userId    String

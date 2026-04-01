@@ -137,18 +137,33 @@ export async function forkBom(sourceId: string, newName: string) {
 }
 
 export async function getBomLineage(id: string): Promise<
-  { id: string; name: string; version: number }[]
+  { id: string; name: string; version: number; comment: string | null; createdAt: Date; userName: string | null }[]
 > {
-  const lineage: { id: string; name: string; version: number }[] = [];
+  const lineage: { id: string; name: string; version: number; comment: string | null; createdAt: Date; userName: string | null }[] = [];
   let currentId: string | null = id;
 
   while (currentId) {
-    const found: { id: string; name: string; version: number; parentId: string | null } | null = await prisma.bom.findUnique({
+    const found: any = await prisma.bom.findUnique({
       where: { id: currentId },
-      select: { id: true, name: true, version: true, parentId: true },
+      select: { 
+        id: true, 
+        name: true, 
+        version: true, 
+        parentId: true,
+        comment: true,
+        createdAt: true,
+        user: { select: { name: true } }
+      },
     });
     if (!found) break;
-    lineage.unshift({ id: found.id, name: found.name, version: found.version });
+    lineage.unshift({ 
+      id: found.id, 
+      name: found.name, 
+      version: found.version,
+      comment: found.comment,
+      createdAt: found.createdAt,
+      userName: found.user?.name || "Unknown"
+    });
     currentId = found.parentId;
   }
 
@@ -266,7 +281,8 @@ export async function createDraftBom(sourceId: string) {
 
 export async function commitDraftBom(
   draftId: string,
-  strategy: "overwrite" | "fork"
+  strategy: "overwrite" | "fork",
+  comment: string
 ) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
@@ -290,6 +306,7 @@ export async function commitDraftBom(
         isDraft: false,
         name: draft.name.replace(" (Draft)", ""),
         version: draft.version + 1,
+        comment: comment,
       },
     });
     revalidatePath("/boms");
@@ -328,7 +345,10 @@ export async function commitDraftBom(
       // 3. Update parent metadata
       await tx.bom.update({
         where: { id: parentId },
-        data: { updatedAt: new Date() },
+        data: { 
+          updatedAt: new Date(),
+          comment: comment 
+        },
       });
 
       // 4. Delete the draft

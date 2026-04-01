@@ -26,12 +26,25 @@ import {
   X,
   Check,
   Loader2,
+  Table as TableIcon,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BomHistory } from "@/components/bom/bom-history";
+
+interface HistoryItem {
+  id: string;
+  name: string;
+  version: number;
+  comment: string | null;
+  createdAt: Date;
+  userName: string | null;
+}
 
 interface BomDetailClientProps {
   bom: BomWithRelations;
-  lineage: { id: string; name: string; version: number }[];
+  lineage: HistoryItem[];
 }
 
 export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
@@ -333,29 +346,61 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
         </Card>
       )}
 
-      {/* Entry Table */}
-      {bom.entries.length > 0 ? (
-        <BomEntryTable entries={bom.entries} editMode={isEditingDraft || editMode} />
-      ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Hash className="h-12 w-12 text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground">
-              No entries yet. Upload a BOM file to get started.
-            </p>
-            {!bom.isLocked && (
-              <Button
-                className="mt-4"
-                variant="outline"
-                onClick={() => setShowUpload(true)}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload BOM File
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <Tabs defaultValue="contents" className="space-y-6">
+        <div className="flex items-center justify-between border-b border-border/50 pb-2">
+          <TabsList className="bg-transparent h-auto p-0 gap-6 border-none">
+            <TabsTrigger
+              value="contents"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-2 flex items-center gap-2 text-sm font-medium transition-all"
+            >
+              <TableIcon className="h-4 w-4" />
+              Bill of Materials
+            </TabsTrigger>
+            <TabsTrigger
+              value="history"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-2 flex items-center gap-2 text-sm font-medium transition-all relative"
+            >
+              <History className="h-4 w-4" />
+              Revision History
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1 h-4 flex items-center bg-primary/10 text-primary border-primary/20">
+                {lineage.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="contents" className="mt-0 border-none p-0 outline-none">
+          {/* Entry Table */}
+          {bom.entries.length > 0 ? (
+            <BomEntryTable entries={bom.entries} editMode={isEditingDraft || editMode} />
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <Hash className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  No entries yet. Upload a BOM file to get started.
+                </p>
+                {!bom.isLocked && (
+                  <Button
+                    className="mt-4"
+                    variant="outline"
+                    onClick={() => setShowUpload(true)}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload BOM File
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-0 border-none p-0 outline-none">
+          <div className="py-6">
+            <BomHistory lineage={lineage} currentId={bom.id} />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Fork Dialog */}
       <ForkDialog
