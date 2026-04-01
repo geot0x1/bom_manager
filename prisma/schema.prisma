@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Auth ─────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  hashedPassword String
+  role           Role     @default(USER)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  boms           Bom[]
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+// ── Domain ───────────────────────────────────────────
+
+model Part {
+  id              String     @id @default(cuid())
+  mpn             String     @unique
+  manufacturer    String
+  description     String
+  footprint       String
+  defaultUnitCost Float      @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  bomEntries      BomEntry[]
+}
+
+model Bom {
+  id        String     @id @default(cuid())
+  name      String
+  version   Int        @default(1)
+  parentId  String?
+  parent    Bom?       @relation("BomFork", fields: [parentId], references: [id])
+  children  Bom[]      @relation("BomFork")
+  isLocked  Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  entries   BomEntry[]
+
+  @@index([parentId])
+  @@index([userId])
+}
+
+model BomEntry {
+  id          String       @id @default(cuid())
+  bomId       String
+  bom         Bom          @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  partId      String
+  part        Part         @relation(fields: [partId], references: [id])
+  unitCost    Float
+  createdAt   DateTime     @default(now())
+  designators Designator[]
+
+  @@unique([bomId, partId])
+  @@index([bomId])
+  @@index([partId])
+}
+
+model Designator {
+  id         String   @id @default(cuid())
+  label      String
+  bomEntryId String
+  bomEntry   BomEntry @relation(fields: [bomEntryId], references: [id], onDelete: Cascade)
+
+  @@index([bomEntryId])
+  @@index([label])
+}
