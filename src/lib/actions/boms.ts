@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 export async function getBoms(search?: string, page = 1, pageSize = 20) {
   const where = {
     isDraft: false,
+    children: { none: {} }, // Only show latest versions
     ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
   };
 
@@ -101,14 +102,15 @@ export async function forkBom(sourceId: string, newName: string) {
 
   if (!source) throw new Error("Source BOM not found");
 
-  // Create the forked BOM
+  // Create the TRUE FORK: A brand new project starting at v1
   const forked = await prisma.bom.create({
     data: {
       name: newName,
-      version: source.version + 1,
-      parentId: sourceId,
+      version: 1, // Fresh project starts at v1
+      parentId: null, // No historical tie
       userId: session.user.id,
       isLocked: false,
+      comment: `Forked from ${source.name} (v${source.version})`,
     },
   });
 
@@ -281,7 +283,7 @@ export async function createDraftBom(sourceId: string) {
 
 export async function commitDraftBom(
   draftId: string,
-  strategy: "overwrite" | "fork",
+  strategy: "overwrite" | "new_version",
   comment: string
 ) {
   const session = await auth();
@@ -298,8 +300,8 @@ export async function commitDraftBom(
 
   if (!draft || !draft.isDraft) throw new Error("Draft not found");
 
-  if (strategy === "fork") {
-    // Strategy: Fork (New Version)
+  if (strategy === "new_version") {
+    // Strategy: New Version (History)
     const committed = await prisma.bom.update({
       where: { id: draftId },
       data: {

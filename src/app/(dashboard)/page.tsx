@@ -15,13 +15,22 @@ import Link from "next/link";
 export default async function DashboardPage() {
   const session = await auth();
   const [bomCount, partCount, recentBoms] = await Promise.all([
-    prisma.bom.count({ where: { isDraft: false } }),
+    prisma.bom.count({ 
+      where: { 
+        isDraft: false,
+        children: { none: {} }
+      } 
+    }),
     prisma.part.count(),
     prisma.bom.findMany({
-      where: { isDraft: false },
+      where: { 
+        isDraft: false,
+        children: { none: {} }
+      },
       take: 5,
       orderBy: { updatedAt: "desc" },
       include: {
+        user: { select: { name: true, email: true } },
         entries: { include: { designators: true } },
         _count: { select: { entries: true, children: true } },
       },
@@ -29,9 +38,9 @@ export default async function DashboardPage() {
   ]);
 
   const totalDesignators = await prisma.designator.count();
-  const forkCount = await prisma.bom.count({
+  const projectCount = await prisma.bom.count({
     where: { 
-      parentId: { not: null },
+      parentId: null,
       isDraft: false 
     },
   });
@@ -87,9 +96,9 @@ export default async function DashboardPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Forks Created</p>
+                <p className="text-sm text-muted-foreground">Unique Projects</p>
                 <p className="text-3xl font-bold font-mono-display mt-1">
-                  {forkCount}
+                  {projectCount}
                 </p>
               </div>
               <div className="rounded-lg bg-chart-5/10 p-3 group-hover:bg-chart-5/20 transition-colors">

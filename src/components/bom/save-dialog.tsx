@@ -37,12 +37,12 @@ export function SaveDialog({ open, onOpenChange, draftId }: SaveDialogProps) {
     }
 
     setIsPending(true);
-    const strategy = overwrite ? "overwrite" : "fork";
+    const strategy = overwrite ? "overwrite" : "new_version";
     
     try {
       const result = await commitDraftBom(draftId, strategy, comment.trim());
       toast.success(
-        strategy === "fork"
+        strategy === "new_version"
           ? "BOM saved as new history entry"
           : "Previous version updated"
       );
