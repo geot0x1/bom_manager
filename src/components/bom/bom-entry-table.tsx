@@ -12,7 +12,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DesignatorGroup } from "./designator-badge";
 import { ReassignDialog } from "./reassign-dialog";
+import { EditEntryMpnDialog } from "./edit-entry-dialog";
 import type { BomEntryWithRelations } from "@/lib/types";
+import { Edit2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface BomEntryTableProps {
   entries: BomEntryWithRelations[];
@@ -26,6 +29,8 @@ export function BomEntryTable({ entries, editMode = false }: BomEntryTableProps)
   } | null>(null);
   const [reassignEntryMpn, setReassignEntryMpn] = useState("");
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<BomEntryWithRelations | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const totalCost = entries.reduce(
     (sum, entry) => sum + entry.unitCost * entry.designators.length,
@@ -60,6 +65,7 @@ export function BomEntryTable({ entries, editMode = false }: BomEntryTableProps)
               <TableHead className="w-[60px] text-center">Qty</TableHead>
               <TableHead className="w-[100px] text-right">Line Total</TableHead>
               <TableHead className="min-w-[200px]">Designators</TableHead>
+              {editMode && <TableHead className="w-[50px]"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -99,6 +105,21 @@ export function BomEntryTable({ entries, editMode = false }: BomEntryTableProps)
                     }}
                   />
                 </TableCell>
+                {editMode && (
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
+                      onClick={() => {
+                        setEditingEntry(entry);
+                        setEditDialogOpen(true);
+                      }}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -129,6 +150,12 @@ export function BomEntryTable({ entries, editMode = false }: BomEntryTableProps)
         designator={selectedDesignator}
         currentEntryMpn={reassignEntryMpn}
         entries={entries}
+      />
+
+      <EditEntryMpnDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        entry={editingEntry}
       />
     </>
   );

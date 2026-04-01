@@ -153,3 +153,61 @@ export async function getBomLineage(id: string): Promise<
 
   return lineage;
 }
+export async function updateBomEntryMpn(entryId: string, newMpn: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const entry = await prisma.bomEntry.findUnique({
+    where: { id: entryId },
+    include: { bom: true, designators: true },
+  });
+
+  if (!entry) throw new Error("BOM entry not found");
+  if (entry.bom.isLocked) throw new Error("BOM is locked");
+
+  // 1. Find or create the new part
+  let newPart = await prisma.part.findUnique({ where: { mpn: newMpn } });
+  if (!newPart) {
+    newPart = await prisma.part.create({
+      data: {
+        mpn: newMpn,
+        manufacturer: "Unknown",
+        description: "Auto-created from MPN change",
+        footprint: "Unknown",
+        defaultUnitCost: entry.unitCost,
+      },
+    });
+  }
+
+  // 2. Check if an entry for this part already exists in the same BOM
+  const existingEntry = await prisma.bomEntry.findUnique({
+    where: {
+      bomId_partId: {
+        bomId: entry.bomId,
+        partId: newPart.id,
+      },
+    },
+  });
+
+  if (existingEntry && existingEntry.id !== entry.id) {
+    // 3. MERGE logic: move all designators to the existing entry
+    await prisma.$transaction([
+      prisma.designator.updateMany({
+        where: { bomEntryId: entry.id },
+        data: { bomEntryId: existingEntry.id },
+      }),
+      prisma.bomEntry.delete({
+        where: { id: entry.id },
+      }),
+    ]);
+  } else {
+    // 4. UPDATE logic: just point the current entry to the new part
+    await prisma.bomEntry.update({
+      where: { id: entry.id },
+      data: { partId: newPart.id },
+    });
+  }
+
+  revalidatePath(`/boms/${entry.bomId}`);
+  return { success: true };
+}
