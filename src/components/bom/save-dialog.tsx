@@ -9,13 +9,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { GitFork, Save, Loader2, AlertTriangle, MessageSquare } from "lucide-react";
+import { Check, Save, Loader2, MessageSquare, AlertCircle } from "lucide-react";
 import { commitDraftBom } from "@/lib/actions/boms";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface SaveDialogProps {
   open: boolean;
@@ -24,45 +25,47 @@ interface SaveDialogProps {
 }
 
 export function SaveDialog({ open, onOpenChange, draftId }: SaveDialogProps) {
-  const [isPending, setIsPending] = useState<"overwrite" | "fork" | null>(null);
+  const [isPending, setIsPending] = useState(false);
   const [comment, setComment] = useState("");
+  const [overwrite, setOverwrite] = useState(false);
   const router = useRouter();
 
-  const handleSave = async (strategy: "overwrite" | "fork") => {
+  const handleSave = async () => {
     if (!comment.trim()) {
       toast.error("Please add a revision note");
       return;
     }
 
-    setIsPending(strategy);
+    setIsPending(true);
+    const strategy = overwrite ? "overwrite" : "fork";
+    
     try {
       const result = await commitDraftBom(draftId, strategy, comment.trim());
       toast.success(
         strategy === "fork"
-          ? "BOM saved as new version"
-          : "Official version updated"
+          ? "BOM saved as new history entry"
+          : "Previous version updated"
       );
       onOpenChange(false);
-      // Wait for revalidation and redirect
       router.push(`/boms/${result.id}`);
       router.refresh();
     } catch (error: any) {
       toast.error(error.message || "Failed to save changes");
     } finally {
-      setIsPending(null);
+      setIsPending(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Save className="h-5 w-5 text-primary" />
             Save Changes
           </DialogTitle>
           <DialogDescription>
-            Document your changes and choose a saving strategy.
+            Document your edits to maintain a clean production history.
           </DialogDescription>
         </DialogHeader>
 
@@ -74,69 +77,62 @@ export function SaveDialog({ open, onOpenChange, draftId }: SaveDialogProps) {
             </Label>
             <Textarea
               id="comment"
-              placeholder="Describe what changed and why (e.g., 'Replaced R1 with equivalent part')..."
+              placeholder="E.g., 'Corrected R1 footprint', 'Shifted BOM to new manufacturing batch'..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="min-h-[100px] resize-none"
+              className="min-h-[120px] resize-none"
               autoFocus
             />
           </div>
 
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => handleSave("fork")}
-              disabled={!!isPending}
-              className="flex items-start gap-4 p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 hover:border-primary/50 transition-all text-left group"
-            >
-              <div className="rounded-lg bg-primary/10 p-2 text-primary mt-1">
-                <GitFork className="h-5 w-5" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                  New Version (Fork)
-                </p>
-                <p className="text-sm text-muted-foreground mt-1 text-pretty">
-                  Creates a new revision (e.g. v1 $\rightarrow$ v2) while keeping the original
-                  version unchanged for historical reference. Recommended.
-                </p>
-              </div>
-              {isPending === "fork" && (
-                <Loader2 className="h-5 w-5 animate-spin text-primary self-center" />
-              )}
-            </button>
-
-            <button
-              onClick={() => handleSave("overwrite")}
-              disabled={!!isPending}
-              className="flex items-start gap-4 p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 hover:border-destructive/50 transition-all text-left group"
-            >
-              <div className="rounded-lg bg-orange-500/10 p-2 text-orange-500 mt-1">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-foreground group-hover:text-orange-500 transition-colors">
-                  Overwrite Existing BOM
-                </p>
-                <p className="text-sm text-muted-foreground mt-1 text-pretty">
-                  Replace the contents of the official version with your draft.
-                  Use only for minor corrections.
-                </p>
-              </div>
-              {isPending === "overwrite" && (
-                <Loader2 className="h-5 w-5 animate-spin text-primary self-center" />
-              )}
-            </button>
+          <div className="flex items-start space-x-3 p-4 rounded-lg bg-muted/30 border border-border/50">
+            <Checkbox
+              id="overwrite"
+              checked={overwrite}
+              onCheckedChange={(checked) => setOverwrite(!!checked)}
+              className="mt-1"
+            />
+            <div className="grid gap-1.5 leading-none">
+              <Label
+                htmlFor="overwrite"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Overwrite current version
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Merge these edits into the latest history entry instead of creating a new one (e.g., for correcting typos).
+              </p>
+            </div>
           </div>
+          
+          {overwrite && (
+            <div className="flex items-center gap-2 p-3 rounded-md bg-orange-500/10 text-orange-500 text-[10px] uppercase tracking-wider font-bold">
+              <AlertCircle className="h-4 w-4" />
+              This will replace the previous version's data
+            </div>
+          )}
         </div>
 
-        <DialogFooter className="sm:justify-start">
+        <DialogFooter>
           <Button
             type="button"
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            disabled={!!isPending}
+            disabled={isPending}
           >
             Cancel
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            disabled={isPending || !comment.trim()}
+            className="px-8 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
+          >
+            {isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="mr-2 h-4 w-4" />
+            )}
+            Save Changes
           </Button>
         </DialogFooter>
       </DialogContent>
