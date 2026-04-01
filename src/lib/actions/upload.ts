@@ -2,7 +2,7 @@
 
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
-import { uploadRowSchema } from "@/lib/validations";
+import { parseExcelToRows, type ParsedBomRow } from "@/lib/utils/parsers";
 
 export type UploadConflict = {
   mpn: string;
@@ -19,40 +19,11 @@ export type UploadConflict = {
   };
 };
 
-export type ParsedBomRow = {
-  mpn: string;
-  manufacturer: string;
-  description: string;
-  footprint: string;
-  unitCost: number;
-  designators: string[];
-};
-
 export type UploadResult = {
   rows: ParsedBomRow[];
   conflicts: UploadConflict[];
   errors: string[];
 };
-
-function parseDesignatorString(raw: string): string[] {
-  // Split by comma, semicolon, or whitespace
-  return raw
-    .split(/[,;\s]+/)
-    .map((d) => d.trim())
-    .filter((d) => d.length > 0);
-}
-
-function normalizeColumnName(col: string): string {
-  const c = col.toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (c === "mpn" || c === "partnumber" || c === "partno" || c === "pn") return "mpn";
-  if (c === "manufacturer" || c === "mfr" || c === "mfg") return "manufacturer";
-  if (c === "description" || c === "desc") return "description";
-  if (c === "footprint" || c === "package" || c === "pkg") return "footprint";
-  if (c === "unitcost" || c === "cost" || c === "price" || c === "unitprice") return "unitCost";
-  if (c === "designators" || c === "designator" || c === "refdes" || c === "reference" || c === "references") return "designators";
-  if (c === "quantity" || c === "qty") return "quantity";
-  return c;
-}
 
 export async function parseUploadFile(formData: FormData): Promise<UploadResult> {
   const file = formData.get("file") as File;
@@ -68,49 +39,7 @@ export async function parseUploadFile(formData: FormData): Promise<UploadResult>
     return { rows: [], conflicts: [], errors: ["File is empty or has no data rows"] };
   }
 
-  // Normalize column names
-  const normalizedData = rawData.map((row) => {
-    const normalized: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(row)) {
-      normalized[normalizeColumnName(key)] = value;
-    }
-    return normalized;
-  });
-
-  const rows: ParsedBomRow[] = [];
-  const errors: string[] = [];
-
-  for (let i = 0; i < normalizedData.length; i++) {
-    const raw = normalizedData[i];
-    const parsed = uploadRowSchema.safeParse({
-      mpn: String(raw.mpn || ""),
-      manufacturer: String(raw.manufacturer || ""),
-      description: String(raw.description || ""),
-      footprint: String(raw.footprint || ""),
-      unitCost: raw.unitCost || raw.cost || raw.price || 0,
-      designators: String(raw.designators || raw.refdes || raw.reference || ""),
-    });
-
-    if (!parsed.success) {
-      errors.push(`Row ${i + 2}: ${parsed.error.issues.map((e: { message: string }) => e.message).join(", ")}`);
-      continue;
-    }
-
-    const designators = parseDesignatorString(parsed.data.designators);
-    if (designators.length === 0) {
-      errors.push(`Row ${i + 2}: No valid designators found`);
-      continue;
-    }
-
-    rows.push({
-      mpn: parsed.data.mpn,
-      manufacturer: parsed.data.manufacturer,
-      description: parsed.data.description,
-      footprint: parsed.data.footprint,
-      unitCost: parsed.data.unitCost,
-      designators,
-    });
-  }
+  const { rows, errors } = parseExcelToRows(rawData);
 
   // Check for conflicts with existing parts
   const conflicts: UploadConflict[] = [];
