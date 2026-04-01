@@ -46,6 +46,7 @@ model Bom {
   parent    Bom?       @relation("BomFork", fields: [parentId], references: [id])
   children  Bom[]      @relation("BomFork")
   isLocked  Boolean    @default(false)
+  isDraft   Boolean    @default(false)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   userId    String

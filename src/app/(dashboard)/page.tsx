@@ -15,9 +15,10 @@ import Link from "next/link";
 export default async function DashboardPage() {
   const session = await auth();
   const [bomCount, partCount, recentBoms] = await Promise.all([
-    prisma.bom.count(),
+    prisma.bom.count({ where: { isDraft: false } }),
     prisma.part.count(),
     prisma.bom.findMany({
+      where: { isDraft: false },
       take: 5,
       orderBy: { updatedAt: "desc" },
       include: {
@@ -29,7 +30,10 @@ export default async function DashboardPage() {
 
   const totalDesignators = await prisma.designator.count();
   const forkCount = await prisma.bom.count({
-    where: { parentId: { not: null } },
+    where: { 
+      parentId: { not: null },
+      isDraft: false 
+    },
   });
 
   return (
@@ -143,9 +147,9 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              recentBoms.map((bom) => {
+              recentBoms.map((bom: any) => {
                 const totalCost = bom.entries.reduce(
-                  (sum, e) => sum + e.unitCost * e.designators.length,
+                  (sum: number, e: any) => sum + e.unitCost * e.designators.length,
                   0
                 );
                 return (

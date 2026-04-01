@@ -9,8 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BomEntryTable } from "@/components/bom/bom-entry-table";
 import { ForkDialog } from "@/components/bom/fork-dialog";
 import { UploadFlow } from "@/components/upload/upload-flow";
-import { updateBom } from "@/lib/actions/boms";
+import { updateBom, createDraftBom, discardDraftBom } from "@/lib/actions/boms";
 import type { BomWithRelations } from "@/lib/types";
+import { SaveDialog } from "@/components/bom/save-dialog";
 import {
   GitFork,
   Lock,
@@ -22,6 +23,9 @@ import {
   CalendarDays,
   DollarSign,
   Hash,
+  X,
+  Check,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,8 +38,11 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
   const [editMode, setEditMode] = useState(false);
   const [showFork, setShowFork] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [showSave, setShowSave] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  const isEditingDraft = bom.isDraft;
 
   const totalCost = bom.entries.reduce(
     (sum: number, e: { unitCost: number; designators: unknown[] }) => sum + e.unitCost * e.designators.length,
@@ -45,6 +52,39 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
     (sum: number, e: { designators: unknown[] }) => sum + e.designators.length,
     0
   );
+
+  const handleEditToggle = () => {
+    if (isEditingDraft) {
+      setEditMode(!editMode);
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const draft = await createDraftBom(bom.id);
+        toast.info("Entering Edit Mode (Working Draft Created)");
+        router.push(`/boms/${draft.id}`);
+      } catch (error: any) {
+        toast.error(error.message || "Failed to create draft");
+      }
+    });
+  };
+
+  const handleDiscardDraft = () => {
+    startTransition(async () => {
+      try {
+        const { parentId } = await discardDraftBom(bom.id);
+        toast.info("Draft discarded");
+        if (parentId) {
+          router.push(`/boms/${parentId}`);
+        } else {
+          router.push("/boms");
+        }
+      } catch (error: any) {
+        toast.error(error.message || "Failed to discard draft");
+      }
+    });
+  };
 
   const handleToggleLock = () => {
     startTransition(async () => {
@@ -86,6 +126,11 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
             <Badge variant="outline" className="font-mono-display">
               v{bom.version}
             </Badge>
+            {isEditingDraft && (
+              <Badge className="bg-primary/20 text-primary border-primary/30 animate-pulse">
+                Unsaved Changes (Draft)
+              </Badge>
+            )}
             {bom.isLocked ? (
               <Badge className="bg-warning/10 text-warning border-warning/30">
                 <Lock className="h-3 w-3 mr-1" />
@@ -104,61 +149,87 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {!bom.isLocked && (
+          {isEditingDraft ? (
             <>
               <Button
-                variant={editMode ? "default" : "outline"}
+                variant="default"
                 size="sm"
-                onClick={() => setEditMode(!editMode)}
+                onClick={() => setShowSave(true)}
+                className="bg-primary hover:bg-primary/90"
               >
-                {editMode ? (
-                  <>
-                    <Eye className="h-4 w-4 mr-1.5" />
-                    View Mode
-                  </>
-                ) : (
-                  <>
-                    <Edit3 className="h-4 w-4 mr-1.5" />
-                    Edit Mode
-                  </>
-                )}
+                <Check className="h-4 w-4 mr-1.5" />
+                Save...
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowUpload(!showUpload)}
+                onClick={handleDiscardDraft}
+                disabled={isPending}
+                className="text-destructive border-destructive/30 hover:bg-destructive/10"
               >
-                <Upload className="h-4 w-4 mr-1.5" />
-                Upload
+                <X className="h-4 w-4 mr-1.5" />
+                Discard
+              </Button>
+            </>
+          ) : (
+            !bom.isLocked && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEditToggle}
+                  disabled={isPending}
+                >
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Edit3 className="h-4 w-4 mr-1.5" />
+                      Edit Mode
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowUpload(!showUpload)}
+                >
+                  <Upload className="h-4 w-4 mr-1.5" />
+                  Upload
+                </Button>
+              </>
+            )
+          )}
+          {!isEditingDraft && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFork(true)}
+              >
+                <GitFork className="h-4 w-4 mr-1.5" />
+                Fork
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleLock}
+                disabled={isPending}
+              >
+                {bom.isLocked ? (
+                  <>
+                    <Unlock className="h-4 w-4 mr-1.5" />
+                    Unlock
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4 mr-1.5" />
+                    Lock
+                  </>
+                )}
               </Button>
             </>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFork(true)}
-          >
-            <GitFork className="h-4 w-4 mr-1.5" />
-            Fork
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleToggleLock}
-            disabled={isPending}
-          >
-            {bom.isLocked ? (
-              <>
-                <Unlock className="h-4 w-4 mr-1.5" />
-                Unlock
-              </>
-            ) : (
-              <>
-                <Lock className="h-4 w-4 mr-1.5" />
-                Lock
-              </>
-            )}
-          </Button>
         </div>
       </div>
 
@@ -264,7 +335,7 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
 
       {/* Entry Table */}
       {bom.entries.length > 0 ? (
-        <BomEntryTable entries={bom.entries} editMode={editMode} />
+        <BomEntryTable entries={bom.entries} editMode={isEditingDraft || editMode} />
       ) : (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
@@ -292,6 +363,12 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
         bomName={bom.name}
         open={showFork}
         onOpenChange={setShowFork}
+      />
+
+      <SaveDialog
+        open={showSave}
+        onOpenChange={setShowSave}
+        draftId={bom.id}
       />
     </div>
   );

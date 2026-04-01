@@ -5,9 +5,10 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
 export async function getBoms(search?: string, page = 1, pageSize = 20) {
-  const where = search
-    ? { name: { contains: search, mode: "insensitive" as const } }
-    : {};
+  const where = {
+    isDraft: false,
+    ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+  };
 
   const [boms, total] = await Promise.all([
     prisma.bom.findMany({
@@ -210,4 +211,146 @@ export async function updateBomEntryMpn(entryId: string, newMpn: string) {
 
   revalidatePath(`/boms/${entry.bomId}`);
   return { success: true };
+}
+
+export async function createDraftBom(sourceId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const source = await prisma.bom.findUnique({
+    where: { id: sourceId },
+    include: {
+      entries: {
+        include: { designators: true },
+      },
+    },
+  });
+
+  if (!source) throw new Error("Source BOM not found");
+
+  // Create the draft BOM
+  const draft = await prisma.bom.create({
+    data: {
+      name: `${source.name} (Draft)`,
+      version: source.version,
+      parentId: sourceId,
+      userId: session.user.id,
+      isDraft: true,
+      isLocked: false,
+    },
+  });
+
+  // Deep-copy all entries and designators
+  for (const entry of source.entries) {
+    const newEntry = await prisma.bomEntry.create({
+      data: {
+        bomId: draft.id,
+        partId: entry.partId,
+        unitCost: entry.unitCost,
+      },
+    });
+
+    if (entry.designators.length > 0) {
+      await prisma.designator.createMany({
+        data: entry.designators.map((d: { label: string }) => ({
+          label: d.label,
+          bomEntryId: newEntry.id,
+        })),
+      });
+    }
+  }
+
+  revalidatePath(`/boms/${draft.id}`);
+  return draft;
+}
+
+export async function commitDraftBom(
+  draftId: string,
+  strategy: "overwrite" | "fork"
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const draft = await prisma.bom.findUnique({
+    where: { id: draftId },
+    include: {
+      entries: {
+        include: { designators: true },
+      },
+    },
+  });
+
+  if (!draft || !draft.isDraft) throw new Error("Draft not found");
+
+  if (strategy === "fork") {
+    // Strategy: Fork (New Version)
+    const committed = await prisma.bom.update({
+      where: { id: draftId },
+      data: {
+        isDraft: false,
+        name: draft.name.replace(" (Draft)", ""),
+        version: draft.version + 1,
+      },
+    });
+    revalidatePath("/boms");
+    revalidatePath(`/boms/${committed.id}`);
+    return committed;
+  } else {
+    // Strategy: Overwrite
+    if (!draft.parentId) throw new Error("Cannot overwrite: No parent BOM found");
+
+    const parentId = draft.parentId;
+
+    await prisma.$transaction(async (tx: any) => {
+      // 1. Clear parent's entries
+      await tx.bomEntry.deleteMany({ where: { bomId: parentId } });
+
+      // 2. Clone draft entries to parent
+      for (const entry of draft.entries) {
+        const newEntry = await tx.bomEntry.create({
+          data: {
+            bomId: parentId,
+            partId: entry.partId,
+            unitCost: entry.unitCost,
+          },
+        });
+
+        if (entry.designators.length > 0) {
+          await tx.designator.createMany({
+            data: entry.designators.map((d: { label: string }) => ({
+              label: d.label,
+              bomEntryId: newEntry.id,
+            })),
+          });
+        }
+      }
+
+      // 3. Update parent metadata
+      await tx.bom.update({
+        where: { id: parentId },
+        data: { updatedAt: new Date() },
+      });
+
+      // 4. Delete the draft
+      await tx.bom.delete({ where: { id: draftId } });
+    });
+
+    revalidatePath("/boms");
+    revalidatePath(`/boms/${parentId}`);
+    return { id: parentId };
+  }
+}
+
+export async function discardDraftBom(draftId: string) {
+  const draft = await prisma.bom.findUnique({ where: { id: draftId } });
+  if (!draft || !draft.isDraft) throw new Error("Draft not found");
+
+  const parentId = draft.parentId;
+  await prisma.bom.delete({ where: { id: draftId } });
+
+  if (parentId) {
+    revalidatePath(`/boms/${parentId}`);
+  }
+  revalidatePath("/boms");
+  return { parentId };
 }
