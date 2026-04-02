@@ -55,48 +55,48 @@
 /* ── Engineer-Dark Theme ─────────────────────────── */
 
 :root {
-  --background: oklch(0.13 0.005 260);
-  --foreground: oklch(0.82 0.005 260);
-  --card: oklch(0.17 0.007 260);
-  --card-foreground: oklch(0.82 0.005 260);
-  --popover: oklch(0.17 0.007 260);
-  --popover-foreground: oklch(0.82 0.005 260);
-  --primary: oklch(0.62 0.13 230);
-  --primary-foreground: oklch(0.13 0.005 260);
-  --secondary: oklch(0.22 0.01 260);
-  --secondary-foreground: oklch(0.76 0.005 260);
-  --muted: oklch(0.20 0.008 260);
-  --muted-foreground: oklch(0.55 0.008 260);
-  --accent: oklch(0.22 0.012 260);
-  --accent-foreground: oklch(0.76 0.005 260);
-  --destructive: oklch(0.58 0.17 25);
-  --border: oklch(0.23 0.008 260);
-  --input: oklch(0.21 0.008 260);
-  --ring: oklch(0.62 0.13 230);
-  --success: oklch(0.58 0.14 155);
-  --success-foreground: oklch(0.13 0.005 260);
-  --warning: oklch(0.68 0.12 70);
-  --warning-foreground: oklch(0.13 0.005 260);
-  --chart-1: oklch(0.62 0.13 230);
-  --chart-2: oklch(0.58 0.14 155);
-  --chart-3: oklch(0.68 0.12 70);
-  --chart-4: oklch(0.58 0.17 25);
-  --chart-5: oklch(0.56 0.12 300);
+  --background: oklch(0.20 0.005 260);
+  --foreground: oklch(0.96 0.005 260);
+  --card: oklch(0.24 0.006 260);
+  --card-foreground: oklch(0.96 0.005 260);
+  --popover: oklch(0.24 0.006 260);
+  --popover-foreground: oklch(0.96 0.005 260);
+  --primary: oklch(0.56 0.09 230);
+  --primary-foreground: oklch(0.20 0.005 260);
+  --secondary: oklch(0.28 0.007 260);
+  --secondary-foreground: oklch(0.92 0.005 260);
+  --muted: oklch(0.26 0.006 260);
+  --muted-foreground: oklch(0.88 0.006 260);
+  --accent: oklch(0.28 0.008 260);
+  --accent-foreground: oklch(0.92 0.005 260);
+  --destructive: oklch(0.52 0.13 25);
+  --border: oklch(0.27 0.006 260);
+  --input: oklch(0.26 0.006 260);
+  --ring: oklch(0.56 0.09 230);
+  --success: oklch(0.52 0.10 155);
+  --success-foreground: oklch(0.20 0.005 260);
+  --warning: oklch(0.60 0.09 70);
+  --warning-foreground: oklch(0.20 0.005 260);
+  --chart-1: oklch(0.56 0.09 230);
+  --chart-2: oklch(0.52 0.10 155);
+  --chart-3: oklch(0.60 0.09 70);
+  --chart-4: oklch(0.52 0.13 25);
+  --chart-5: oklch(0.50 0.09 300);
   --radius: 0.5rem;
-  --sidebar: oklch(0.14 0.006 260);
-  --sidebar-foreground: oklch(0.76 0.005 260);
-  --sidebar-primary: oklch(0.62 0.13 230);
-  --sidebar-primary-foreground: oklch(0.13 0.005 260);
-  --sidebar-accent: oklch(0.20 0.01 260);
-  --sidebar-accent-foreground: oklch(0.76 0.005 260);
-  --sidebar-border: oklch(0.23 0.008 260);
-  --sidebar-ring: oklch(0.62 0.13 230);
+  --sidebar: oklch(0.18 0.005 260);
+  --sidebar-foreground: oklch(0.92 0.005 260);
+  --sidebar-primary: oklch(0.56 0.09 230);
+  --sidebar-primary-foreground: oklch(0.20 0.005 260);
+  --sidebar-accent: oklch(0.26 0.007 260);
+  --sidebar-accent-foreground: oklch(0.92 0.005 260);
+  --sidebar-border: oklch(0.27 0.006 260);
+  --sidebar-ring: oklch(0.56 0.09 230);
 }
 
 /* Force dark — no light mode */
 .dark {
-  --background: oklch(0.13 0.005 260);
-  --foreground: oklch(0.82 0.005 260);
+  --background: oklch(0.20 0.005 260);
+  --foreground: oklch(0.96 0.005 260);
 }
 
 @layer base {
@@ -130,7 +130,7 @@
 
 .designator-badge:hover {
   @apply shadow-sm;
-  box-shadow: 0 0 8px oklch(0.62 0.13 230 / 0.25);
+  box-shadow: 0 0 6px oklch(0.56 0.09 230 / 0.15);
 }
 
 .designator-badge.interactive {
@@ -139,7 +139,7 @@
 
 .designator-badge.interactive:hover {
   @apply border-primary bg-primary/10 text-primary;
-  box-shadow: 0 0 12px oklch(0.62 0.13 230 / 0.3);
+  box-shadow: 0 0 10px oklch(0.56 0.09 230 / 0.20);
 }
 
 .designator-badge.selected {
@@ -172,12 +172,12 @@
 
 /* Glow effects */
 .glow-primary {
-  box-shadow: 0 0 20px oklch(0.62 0.13 230 / 0.10),
-              0 0 40px oklch(0.62 0.13 230 / 0.04);
+  box-shadow: 0 0 16px oklch(0.56 0.09 230 / 0.07),
+              0 0 32px oklch(0.56 0.09 230 / 0.03);
 }
 
 .glow-success {
-  box-shadow: 0 0 20px oklch(0.58 0.14 155 / 0.10);
+  box-shadow: 0 0 16px oklch(0.52 0.10 155 / 0.07);
 }
 
 /* Smooth page transitions */
