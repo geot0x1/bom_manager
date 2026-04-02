@@ -141,32 +141,41 @@ export async function forkBom(sourceId: string, newName: string) {
 export async function getBomLineage(id: string): Promise<
   { id: string; name: string; version: number; comment: string | null; createdAt: Date; userName: string | null }[]
 > {
-  const lineage: { id: string; name: string; version: number; comment: string | null; createdAt: Date; userName: string | null }[] = [];
-  let currentId: string | null = id;
+  // 1. Find the root of this project lineage
+  let rootId: string = id;
+  let current: any = await prisma.bom.findUnique({ where: { id }, select: { parentId: true } });
+  
+  while (current?.parentId) {
+    rootId = current.parentId;
+    current = await prisma.bom.findUnique({ where: { id: rootId }, select: { parentId: true } });
+  }
 
-  while (currentId) {
+  // 2. Build the full forward-moving chain from the root
+  const lineage: any[] = [];
+  let nextId: string | null = rootId;
+
+  while (nextId) {
     const found: any = await prisma.bom.findUnique({
-      where: { id: currentId },
-      select: { 
-        id: true, 
-        name: true, 
-        version: true, 
-        parentId: true,
-        comment: true,
-        createdAt: true,
-        user: { select: { name: true } }
-      },
+      where: { id: nextId },
+      include: {
+        user: { select: { name: true } },
+        children: { select: { id: true } }
+      }
     });
     if (!found) break;
-    lineage.unshift({ 
-      id: found.id, 
-      name: found.name, 
+
+    lineage.push({
+      id: found.id,
+      name: found.name,
       version: found.version,
       comment: found.comment,
       createdAt: found.createdAt,
       userName: found.user?.name || "Unknown"
     });
-    currentId = found.parentId;
+
+    nextId = found.children?.sort((a: any, b: any) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )[0]?.id || null;
   }
 
   return lineage;
@@ -228,6 +237,48 @@ export async function updateBomEntryMpn(entryId: string, newMpn: string) {
 
   revalidatePath(`/boms/${entry.bomId}`);
   return { success: true };
+}
+
+async function hasBomContentChanged(draftId: string): Promise<boolean> {
+  const draft = await prisma.bom.findUnique({
+    where: { id: draftId },
+    include: {
+      entries: {
+        include: { designators: true },
+      },
+    },
+  });
+
+  if (!draft || !draft.parentId) return true; // Treat as changed if no parent or draft not found
+
+  const parent = await prisma.bom.findUnique({
+    where: { id: draft.parentId },
+    include: {
+      entries: {
+        include: { designators: { orderBy: { label: "asc" } } },
+        orderBy: { part: { mpn: "asc" } },
+      },
+    },
+  });
+
+  if (!parent) return true;
+
+  // Normalize content for comparison
+  const normalize = (entries: any[]) => 
+    entries.map(e => ({
+      mpn: e.partId,
+      cost: Number(e.unitCost),
+      designators: e.designators.map((d: any) => d.label).sort().join(","),
+    })).sort((a, b) => a.mpn.localeCompare(b.mpn));
+
+  const parentContent = JSON.stringify(normalize(parent.entries));
+  const draftContent = JSON.stringify(normalize(draft.entries));
+
+  return parentContent !== draftContent;
+}
+
+export async function checkBomChanges(draftId: string) {
+  return hasBomContentChanged(draftId);
 }
 
 export async function createDraftBom(sourceId: string) {
@@ -299,6 +350,12 @@ export async function commitDraftBom(
   });
 
   if (!draft || !draft.isDraft) throw new Error("Draft not found");
+
+  // --- CONTENT COMPARISON CHECK ---
+  if (!(await hasBomContentChanged(draftId))) {
+    throw new Error("No changes detected. Please make an edit before saving or discard the draft.");
+  }
+  // --- END CHECK ---
 
   if (strategy === "new_version") {
     // Strategy: New Version (History)

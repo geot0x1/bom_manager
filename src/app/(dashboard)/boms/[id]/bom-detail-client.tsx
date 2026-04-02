@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BomEntryTable } from "@/components/bom/bom-entry-table";
 import { ForkDialog } from "@/components/bom/fork-dialog";
 import { UploadFlow } from "@/components/upload/upload-flow";
-import { updateBom, createDraftBom, discardDraftBom } from "@/lib/actions/boms";
+import { updateBom, createDraftBom, discardDraftBom, checkBomChanges } from "@/lib/actions/boms";
 import type { BomWithRelations } from "@/lib/types";
 import { SaveDialog } from "@/components/bom/save-dialog";
 import {
@@ -107,6 +107,28 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
     });
   };
 
+  const handleSaveClick = async () => {
+    startTransition(async () => {
+      try {
+        const hasChanges = await checkBomChanges(bom.id);
+        if (!hasChanges) {
+          toast("No changes detected. Nothing to save.");
+          // Accept the draft (exit edit mode by discarding the identical draft)
+          const { parentId } = await discardDraftBom(bom.id);
+          if (parentId) {
+            router.push(`/boms/${parentId}`);
+          } else {
+            router.push("/boms");
+          }
+          return;
+        }
+        setShowSave(true);
+      } catch (error: any) {
+        toast.error("Failed to check for changes");
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Lineage Breadcrumb */}
@@ -167,10 +189,15 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
               <Button
                 variant="default"
                 size="sm"
-                onClick={() => setShowSave(true)}
+                onClick={handleSaveClick}
+                disabled={isPending}
                 className="bg-primary hover:bg-primary/90"
               >
-                <Check className="h-4 w-4 mr-1.5" />
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                ) : (
+                  <Check className="h-4 w-4 mr-1.5" />
+                )}
                 Save...
               </Button>
               <Button
@@ -313,35 +340,6 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
           </CardHeader>
           <CardContent>
             <UploadFlow bomId={bom.id} />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Children/Forks */}
-      {bom.children && bom.children.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <GitFork className="h-4 w-4 text-muted-foreground" />
-              Forked Versions ({bom.children.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {bom.children.map((child: { id: string; name: string; version: number }) => (
-                <Link key={child.id} href={`/boms/${child.id}`}>
-                  <Badge
-                    variant="outline"
-                    className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors"
-                  >
-                    {child.name}{" "}
-                    <span className="text-muted-foreground ml-1">
-                      v{child.version}
-                    </span>
-                  </Badge>
-                </Link>
-              ))}
-            </div>
           </CardContent>
         </Card>
       )}
