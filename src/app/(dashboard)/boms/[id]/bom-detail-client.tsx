@@ -12,6 +12,7 @@ import { UploadFlow } from "@/components/upload/upload-flow";
 import { updateBom, createDraftBom, discardDraftBom, checkBomChanges } from "@/lib/actions/boms";
 import type { BomWithRelations } from "@/lib/types";
 import { SaveDialog } from "@/components/bom/save-dialog";
+import * as XLSX from "xlsx";
 import {
   GitFork,
   Lock,
@@ -28,6 +29,7 @@ import {
   Loader2,
   Table as TableIcon,
   History,
+  FileDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -127,6 +129,68 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
         toast.error("Failed to check for changes");
       }
     });
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const data = bom.entries.map((entry) => ({
+        MPN: entry.part.mpn,
+        Manufacturer: entry.part.manufacturer,
+        Description: entry.part.description,
+        Footprint: entry.part.footprint,
+        "Unit Cost ($)": entry.unitCost,
+        Quantity: entry.designators.length,
+        "Line Total ($)": (entry.unitCost * entry.designators.length).toFixed(2),
+        Designators: entry.designators.map((d) => d.label).sort().join(", "),
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "BOM");
+
+      // Auto-size columns (Simplified approximation)
+      const maxMPNWidth = Math.max(...data.map(d => d.MPN.length), 10);
+      worksheet["!cols"] = [
+        { wch: maxMPNWidth + 2 },
+        { wch: 15 },
+        { wch: 30 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 8 },
+        { wch: 12 },
+        { wch: 50 },
+      ];
+
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const filename = `${bom.name.replace(/[^a-z0-9]/gi, '_')}_v${bom.version}.xlsx`;
+
+      // Try using the File System Access API for "Save As" dialog
+      if ('showSaveFilePicker' in window) {
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: filename,
+            types: [{
+              description: 'Excel File',
+              accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] },
+            }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(excelBuffer);
+          await writable.close();
+          toast.success("File saved successfully");
+          return;
+        } catch (err: any) {
+          if (err.name === 'AbortError') return; // User cancelled
+          // Fallback to default download if user denied permission or error occurred
+        }
+      }
+
+      // Default fallback download
+      XLSX.writeFile(workbook, filename);
+      toast.success("Excel exported successfully");
+    } catch (error) {
+      toast.error("Failed to export Excel");
+    }
   };
 
   return (
@@ -242,6 +306,15 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
           )}
           {!isEditingDraft && (
             <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                className="bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
+              >
+                <FileDown className="h-4 w-4 mr-1.5" />
+                Export Excel
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
