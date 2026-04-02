@@ -23,7 +23,7 @@ export async function getBoms(search?: string, page = 1, pageSize = 20) {
             designators: true,
           },
         },
-        _count: { select: { entries: true, children: true } },
+        _count: { select: { entries: true, children: true, builds: true } },
       },
       orderBy: { updatedAt: "desc" },
       skip: (page - 1) * pageSize,
@@ -48,6 +48,9 @@ export async function getBomById(id: string) {
           designators: { orderBy: { label: "asc" } },
         },
         orderBy: { part: { mpn: "asc" } },
+      },
+      builds: {
+        orderBy: { createdAt: "desc" },
       },
     },
   });
@@ -432,4 +435,26 @@ export async function discardDraftBom(draftId: string) {
   }
   revalidatePath("/boms");
   return { parentId };
+}
+
+export async function createBuild(bomId: string, quantity: number) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const build = await prisma.build.create({
+    data: {
+      bomId,
+      quantity,
+    },
+  });
+
+  revalidatePath(`/boms/${bomId}`);
+  return build;
+}
+
+export async function getBuilds(bomId: string) {
+  return prisma.build.findMany({
+    where: { bomId },
+    orderBy: { createdAt: "desc" },
+  });
 }

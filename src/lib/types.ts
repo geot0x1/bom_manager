@@ -12,6 +12,14 @@ export type Part = {
   updatedAt: Date;
 };
 
+export type Build = {
+  id: string;
+  bomId: string;
+  quantity: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type Designator = {
   id: string;
   label: string;
@@ -43,7 +51,8 @@ export type BomWithRelations = Bom & {
   parent: { id: string; name: string; version: number } | null;
   children?: { id: string; name: string; version: number }[];
   entries: BomEntryWithRelations[];
-  _count?: { entries: number; children: number };
+  builds?: Build[];
+  _count?: { entries: number; children: number; builds: number };
 };
 
 export type BomEntryWithRelations = BomEntry & {

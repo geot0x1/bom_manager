@@ -34,6 +34,9 @@ import {
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BomHistory } from "@/components/bom/bom-history";
+import { BuildDialog } from "@/components/bom/build-dialog";
+import { BuildHistory } from "@/components/bom/build-history";
+import { Package } from "lucide-react";
 
 interface HistoryItem {
   id: string;
@@ -54,6 +57,7 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
   const [showFork, setShowFork] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showSave, setShowSave] = useState(false);
+  const [showBuild, setShowBuild] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -306,15 +310,24 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
           )}
           {!isEditingDraft && (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportExcel}
-                className="bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
-              >
-                <FileDown className="h-4 w-4 mr-1.5" />
-                Export Excel
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportExcel}
+                  className="bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
+                >
+                  <FileDown className="h-4 w-4 mr-1.5" />
+                  Export Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowBuild(true)}
+                  className="bg-accent/10 border-accent/30 hover:bg-accent/20"
+                >
+                  <Package className="h-4 w-4 mr-1.5" />
+                  Build
+                </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -437,6 +450,16 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
                 {lineage.length}
               </Badge>
             </TabsTrigger>
+            <TabsTrigger
+              value="builds"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 py-2 flex items-center gap-2 text-sm font-medium transition-all relative"
+            >
+              <Package className="h-4 w-4" />
+              Build Logistics
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1 h-4 flex items-center bg-accent/10 text-accent border-accent/20">
+                {bom.builds?.length || 0}
+              </Badge>
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -471,6 +494,12 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
             <BomHistory lineage={lineage} currentId={bom.id} />
           </div>
         </TabsContent>
+
+        <TabsContent value="builds" className="mt-0 border-none p-0 outline-none">
+          <div className="py-6">
+            <BuildHistory builds={bom.builds || []} />
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Fork Dialog */}
@@ -485,6 +514,13 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
         open={showSave}
         onOpenChange={setShowSave}
         draftId={bom.id}
+      />
+
+      <BuildDialog
+        open={showBuild}
+        onOpenChange={setShowBuild}
+        bomId={bom.id}
+        bomName={bom.name}
       />
     </div>
   );

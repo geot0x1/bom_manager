@@ -137,6 +137,7 @@ export function BomsClientPage({ initialBoms }: BomsClientPageProps) {
                   <TableHead>Name</TableHead>
                   <TableHead className="w-20 text-center">Version</TableHead>
                   <TableHead className="w-24 text-center">Parts</TableHead>
+                  <TableHead className="w-24 text-center">Builds</TableHead>
                   <TableHead className="w-32 text-right">Total Cost</TableHead>
                   <TableHead className="w-24 text-center">Status</TableHead>
                   <TableHead>Parent</TableHead>
@@ -167,6 +168,11 @@ export function BomsClientPage({ initialBoms }: BomsClientPageProps) {
                       </TableCell>
                       <TableCell className="text-center font-mono-display">
                         {bom.entries.length}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="bg-accent/5 text-accent border-accent/20 font-mono-display">
+                          {bom._count?.builds || 0}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono-display font-medium">
                         ${totalCost.toFixed(2)}
