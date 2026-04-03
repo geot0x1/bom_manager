@@ -50,9 +50,10 @@ interface HistoryItem {
 interface BomDetailClientProps {
   bom: BomWithRelations;
   lineage: HistoryItem[];
+  historyMap: Record<string, boolean>;
 }
 
-export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
+export function BomDetailClient({ bom, lineage, historyMap }: BomDetailClientProps) {
   const [editMode, setEditMode] = useState(false);
   const [showFork, setShowFork] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -466,7 +467,11 @@ export function BomDetailClient({ bom, lineage }: BomDetailClientProps) {
         <TabsContent value="contents" className="mt-0 border-none p-0 outline-none">
           {/* Entry Table */}
           {bom.entries.length > 0 ? (
-            <BomEntryTable entries={bom.entries} editMode={isEditingDraft || editMode} />
+            <BomEntryTable 
+              entries={bom.entries} 
+              editMode={isEditingDraft || editMode} 
+              historyMap={historyMap}
+            />
           ) : (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16">

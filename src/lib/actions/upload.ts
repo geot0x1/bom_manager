@@ -3,6 +3,7 @@
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { parseExcelToRows, type ParsedBomRow } from "@/lib/utils/parsers";
+export { type ParsedBomRow };
 
 export type UploadConflict = {
   mpn: string;

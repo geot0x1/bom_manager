@@ -13,16 +13,29 @@ import { Badge } from "@/components/ui/badge";
 import { DesignatorGroup } from "./designator-badge";
 import { ReassignDialog } from "./reassign-dialog";
 import { EditEntryMpnDialog } from "./edit-entry-dialog";
-import type { BomEntryWithRelations } from "@/lib/types";
-import { Edit2 } from "lucide-react";
+import type { BomEntryWithRelations, Designator } from "@/lib/types";
+import { Edit2, History, ExternalLink, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from "@/components/ui/context-menu";
+import { RowHistoryDialog } from "./row-history-dialog";
 
 interface BomEntryTableProps {
   entries: BomEntryWithRelations[];
   editMode?: boolean;
+  historyMap: Record<string, boolean>;
 }
 
-export function BomEntryTable({ entries, editMode = false }: BomEntryTableProps) {
+export function BomEntryTable({ 
+  entries, 
+  editMode = false,
+  historyMap
+}: BomEntryTableProps) {
   const [selectedDesignator, setSelectedDesignator] = useState<{
     id: string;
     label: string;
@@ -31,6 +44,9 @@ export function BomEntryTable({ entries, editMode = false }: BomEntryTableProps)
   const [reassignOpen, setReassignOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<BomEntryWithRelations | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyEntryId, setHistoryEntryId] = useState<string | null>(null);
+  const [historyMpn, setHistoryMpn] = useState<string | null>(null);
 
   const totalCost = entries.reduce(
     (sum, entry) => sum + entry.unitCost * entry.designators.length,
@@ -70,57 +86,95 @@ export function BomEntryTable({ entries, editMode = false }: BomEntryTableProps)
           </TableHeader>
           <TableBody>
             {entries.map((entry) => (
-              <TableRow key={entry.id} className="group">
-                <TableCell>
-                  <span className="font-mono-display font-medium text-primary">
-                    {entry.part.mpn}
-                  </span>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {entry.part.description}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="font-mono-display text-xs">
-                    {entry.part.footprint}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right font-mono-display">
-                  ${entry.unitCost.toFixed(2)}
-                </TableCell>
-                <TableCell className="text-center font-medium">
-                  {entry.designators.length}
-                </TableCell>
-                <TableCell className="text-right font-mono-display font-medium">
-                  ${(entry.unitCost * entry.designators.length).toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  <DesignatorGroup
-                    designators={entry.designators}
-                    interactive={editMode}
-                    onSelect={(id) => {
-                      const d = entry.designators.find((d) => d.id === id);
-                      if (d) {
-                        handleDesignatorSelect(id, d.label, entry.part.mpn);
-                      }
+              <ContextMenu key={entry.id}>
+                <ContextMenuTrigger render={(props) => (
+                  <TableRow {...props} className="group cursor-context-menu">
+                    <TableCell>
+                      <span className="font-mono-display font-medium text-primary">
+                        {entry.part.mpn}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {entry.part.description}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono-display text-xs">
+                        {entry.part.footprint}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono-display">
+                      ${entry.unitCost.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-center font-medium">
+                      {entry.designators.length}
+                    </TableCell>
+                    <TableCell className="text-right font-mono-display font-medium">
+                      ${(entry.unitCost * entry.designators.length).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <DesignatorGroup
+                        designators={entry.designators}
+                        interactive={editMode}
+                        onSelect={(id) => {
+                          const d = entry.designators.find((d: Designator) => d.id === id);
+                          if (d) {
+                            handleDesignatorSelect(id, d.label, entry.part.mpn);
+                          }
+                        }}
+                      />
+                    </TableCell>
+                    {editMode && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={() => {
+                            setEditingEntry(entry);
+                            setEditDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                )} />
+                <ContextMenuContent className="min-w-48">
+                  <ContextMenuItem 
+                    disabled={!historyMap?.[entry.id]}
+                    onSelect={() => {
+                      setHistoryEntryId(entry.id);
+                      setHistoryMpn(entry.part.mpn);
+                      setHistoryOpen(true);
                     }}
-                  />
-                </TableCell>
-                {editMode && (
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-primary"
-                      onClick={() => {
-                        setEditingEntry(entry);
-                        setEditDialogOpen(true);
-                      }}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                )}
-              </TableRow>
+                  >
+                    <History className="mr-2 h-4 w-4" />
+                    View History
+                    {!historyMap?.[entry.id] && (
+                      <span className="ml-auto text-[10px] text-muted-foreground">None</span>
+                    )}
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem 
+                    onSelect={() => {
+                      window.open(`https://www.google.com/search?q=${entry.part.mpn}`, "_blank");
+                    }}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Search Online
+                  </ContextMenuItem>
+                  <ContextMenuItem 
+                    onSelect={() => {
+                      setEditingEntry(entry);
+                      setEditDialogOpen(true);
+                    }}
+                  >
+                    <Info className="mr-2 h-4 w-4" />
+                    Part Details
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             ))}
           </TableBody>
         </Table>
@@ -156,6 +210,13 @@ export function BomEntryTable({ entries, editMode = false }: BomEntryTableProps)
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         entry={editingEntry}
+      />
+
+      <RowHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        entryId={historyEntryId}
+        mpn={historyMpn}
       />
     </>
   );

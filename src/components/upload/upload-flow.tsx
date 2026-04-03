@@ -230,7 +230,7 @@ export function UploadFlow({ bomId }: UploadFlowProps) {
                 {errors.length} row(s) had errors and were skipped:
               </p>
               <ul className="text-xs text-muted-foreground space-y-1">
-                {errors.slice(0, 5).map((err, i) => (
+                {errors.slice(0, 5).map((err: string, i: number) => (
                   <li key={i}>{err}</li>
                 ))}
                 {errors.length > 5 && (
@@ -282,7 +282,7 @@ export function UploadFlow({ bomId }: UploadFlowProps) {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {row.designators.map((d) => (
+                          {row.designators.map((d: string) => (
                             <DesignatorBadge key={d} label={d} />
                           ))}
                         </div>

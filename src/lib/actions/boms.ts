@@ -452,9 +452,105 @@ export async function createBuild(bomId: string, quantity: number) {
   return build;
 }
 
-export async function getBuilds(bomId: string) {
-  return prisma.build.findMany({
-    where: { bomId },
-    orderBy: { createdAt: "desc" },
+export async function getBomEntryHistory(entryId: string) {
+  const entry = await prisma.bomEntry.findUnique({
+    where: { id: entryId },
+    include: {
+      bom: true,
+      designators: { select: { label: true } },
+    }
   });
+
+  if (!entry) throw new Error("Entry not found");
+
+  const labels = entry.designators.map(d => d.label);
+  
+  // 1. Get the lineage (all BOM IDs in the project chain)
+  const lineage = await getBomLineage(entry.bomId);
+  const bomIds = lineage.map(b => b.id);
+
+  // 2. Find all entries across these BOMs that share any of our designators
+  // We want to see what parts were used for these "slots" over time
+  const entries = await prisma.bomEntry.findMany({
+    where: {
+      bomId: { in: bomIds },
+      designators: {
+        some: {
+          label: { in: labels }
+        }
+      }
+    },
+    include: {
+      part: true,
+      bom: {
+        select: {
+          id: true,
+          name: true,
+          version: true,
+          createdAt: true,
+          comment: true
+        }
+      },
+      designators: { select: { label: true } }
+    }
+  });
+
+  // Group by Part to see the history of changes
+  // Actually, let's just return them sorted by BOM Version desc
+  return entries.sort((a, b) => b.bom.version - a.bom.version);
+}
+
+export async function getRowHistoryExistence(bomId: string) {
+  const bom = await prisma.bom.findUnique({
+    where: { id: bomId },
+    include: {
+      entries: {
+        include: { designators: { select: { label: true } } }
+      }
+    }
+  });
+  if (!bom) return {};
+
+  const lineage = await getBomLineage(bomId);
+  const currentVersion = bom.version;
+  const pastBomIds = lineage.filter(b => b.version < currentVersion).map(b => b.id);
+
+  if (pastBomIds.length === 0) {
+    const result: Record<string, boolean> = {};
+    bom.entries.forEach(e => result[e.id] = false);
+    return result;
+  }
+
+  // Find any entry in the past that matches any designator in the current BOM
+  const currentLabels = bom.entries.flatMap(e => e.designators.map(d => d.label));
+  
+  const pastEntries = await prisma.bomEntry.findMany({
+    where: {
+      bomId: { in: pastBomIds },
+      designators: {
+        some: {
+          label: { in: currentLabels }
+        }
+      }
+    },
+    include: {
+      designators: { select: { label: true } }
+    }
+  });
+
+  // Map of label -> hasPastEntry
+  const labelHasHistory = new Set<string>();
+  pastEntries.forEach(pe => {
+    pe.designators.forEach(d => {
+      labelHasHistory.add(d.label);
+    });
+  });
+
+  // Map of entryId -> hasHistory
+  const entryHistoryMap: Record<string, boolean> = {};
+  bom.entries.forEach(e => {
+    entryHistoryMap[e.id] = e.designators.some(d => labelHasHistory.has(d.label));
+  });
+
+  return entryHistoryMap;
 }
