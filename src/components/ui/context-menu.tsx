@@ -16,20 +16,7 @@ function ContextMenuPortal({ ...props }: ContextMenuPrimitive.Portal.Props) {
   )
 }
 
-const ContextMenuTrigger = React.forwardRef<
-  any,
-  ContextMenuPrimitive.Trigger.Props
->(({ className, ...props }, ref) => {
-  return (
-    <ContextMenuPrimitive.Trigger
-      ref={ref}
-      data-slot="context-menu-trigger"
-      className={cn("select-none", className)}
-      {...props}
-    />
-  )
-})
-ContextMenuTrigger.displayName = "ContextMenuTrigger"
+const ContextMenuTrigger = ContextMenuPrimitive.Trigger
 
 const ContextMenuContent = React.forwardRef<
   HTMLDivElement,
