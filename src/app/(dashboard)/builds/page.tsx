@@ -1,3 +1,4 @@
+// Triggering reload to sync Prisma Client
 import { getBuilds } from "@/lib/actions/boms";
 import { BuildList } from "@/components/builds/build-list";
 import { History, Package } from "lucide-react";
