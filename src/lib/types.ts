@@ -16,6 +16,7 @@ export type Build = {
   id: string;
   bomId: string;
   quantity: number;
+  date: Date;
   createdAt: Date;
   updatedAt: Date;
 };

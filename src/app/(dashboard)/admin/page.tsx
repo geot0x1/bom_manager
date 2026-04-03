@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Shield, Users, Package, Cpu, Database } from "lucide-react";
+import { format } from "date-fns";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -143,8 +144,8 @@ export default async function AdminPage() {
                   <TableCell className="text-center font-mono-display">
                     {user._count.boms}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                  <TableCell className="text-sm text-muted-foreground font-mono-display">
+                    {format(new Date(user.createdAt), "MMM d, yyyy")}
                   </TableCell>
                 </TableRow>
               ))}

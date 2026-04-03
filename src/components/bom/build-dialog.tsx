@@ -30,6 +30,7 @@ export function BuildDialog({
   onOpenChange,
 }: BuildDialogProps) {
   const [quantity, setQuantity] = useState(1);
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -41,7 +42,7 @@ export function BuildDialog({
 
     startTransition(async () => {
       try {
-        await createBuild(bomId, quantity);
+        await createBuild(bomId, quantity, new Date(date));
         toast.success(`Registered build for ${quantity} units`);
         onOpenChange(false);
         router.refresh();
@@ -73,6 +74,15 @@ export function BuildDialog({
               value={quantity}
               onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
               placeholder="Enter build quantity"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Build Date</label>
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="[color-scheme:dark]"
             />
           </div>
         </div>

@@ -46,6 +46,7 @@ import {
 import { deleteBom, updateBom } from "@/lib/actions/boms";
 import type { BomWithRelations } from "@/lib/types";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 interface BomsClientPageProps {
   initialBoms: BomWithRelations[];
@@ -210,8 +211,8 @@ export function BomsClientPage({ initialBoms }: BomsClientPageProps) {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(bom.updatedAt).toLocaleDateString()}
+                      <TableCell className="text-xs text-muted-foreground font-mono-display">
+                        {format(new Date(bom.updatedAt), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>

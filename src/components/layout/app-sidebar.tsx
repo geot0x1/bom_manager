@@ -9,6 +9,7 @@ import {
   GitFork,
   Settings,
   Upload,
+  History,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/boms", label: "BOMs", icon: Package },
+  { href: "/builds", label: "Builds", icon: History },
   { href: "/boms/new", label: "Upload BOM", icon: Upload },
   { href: "/boms/compare", label: "Compare", icon: GitFork },
   { href: "/parts", label: "Part Library", icon: Cpu },

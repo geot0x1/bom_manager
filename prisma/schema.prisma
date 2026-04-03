@@ -89,6 +89,7 @@ model Build {
   bomId     String
   bom       Bom      @relation(fields: [bomId], references: [id])
   quantity  Int      @default(1)
+  date      DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -38,7 +38,7 @@ export function BuildHistory({ builds }: BuildHistoryProps) {
           {builds.map((build) => (
             <TableRow key={build.id}>
               <TableCell className="font-medium">
-                {format(new Date(build.createdAt), "MMM d, yyyy · HH:mm")}
+                {format(new Date(build.date || build.createdAt), "MMM d, yyyy")}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">

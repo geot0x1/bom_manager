@@ -11,6 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { format } from "date-fns";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -172,8 +173,8 @@ export default async function DashboardPage() {
                         <span className="font-medium group-hover:text-primary transition-colors">
                           {bom.name}
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(bom.updatedAt).toLocaleDateString()} ·{" "}
+                        <span className="text-xs text-muted-foreground font-mono-display">
+                          {format(new Date(bom.updatedAt), "MMM d, yyyy")} ·{" "}
                           {bom._count.entries} parts
                         </span>
                       </div>

@@ -437,7 +437,7 @@ export async function discardDraftBom(draftId: string) {
   return { parentId };
 }
 
-export async function createBuild(bomId: string, quantity: number) {
+export async function createBuild(bomId: string, quantity: number, date?: Date) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -445,11 +445,33 @@ export async function createBuild(bomId: string, quantity: number) {
     data: {
       bomId,
       quantity,
+      date: date || new Date(),
     },
   });
 
   revalidatePath(`/boms/${bomId}`);
+  revalidatePath("/builds");
   return build;
+}
+
+export async function getBuilds() {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  return prisma.build.findMany({
+    include: {
+      bom: {
+        select: {
+          id: true,
+          name: true,
+          version: true,
+        },
+      },
+    },
+    orderBy: {
+      date: "desc",
+    },
+  });
 }
 
 export async function getBomEntryHistory(entryId: string) {

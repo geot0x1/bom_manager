@@ -37,6 +37,7 @@ import { BomHistory } from "@/components/bom/bom-history";
 import { BuildDialog } from "@/components/bom/build-dialog";
 import { BuildHistory } from "@/components/bom/build-history";
 import { Package } from "lucide-react";
+import { format } from "date-fns";
 
 interface HistoryItem {
   id: string;
@@ -249,7 +250,7 @@ export function BomDetailClient({ bom, lineage, historyMap }: BomDetailClientPro
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             Created by {bom.user.name || bom.user.email} ·{" "}
-            {new Date(bom.createdAt).toLocaleDateString()}
+            {format(new Date(bom.createdAt), "MMM d, yyyy")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -409,7 +410,7 @@ export function BomDetailClient({ bom, lineage, historyMap }: BomDetailClientPro
             <div>
               <p className="text-xs text-muted-foreground">Last Updated</p>
               <p className="text-sm font-medium">
-                {new Date(bom.updatedAt).toLocaleDateString()}
+                {format(new Date(bom.updatedAt), "MMM d, yyyy")}
               </p>
             </div>
           </CardContent>
